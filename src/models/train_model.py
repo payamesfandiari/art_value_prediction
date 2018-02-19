@@ -17,10 +17,15 @@ from sklearn.tree import DecisionTreeRegressor
 from time import time
 
 
+def rmse(ground_truth, predictions):
+    mse = metrics.mean_squared_error(ground_truth,predictions)
+    return np.sqrt(mse)
+
+
 def tuner(clf, x, y, params, cv_fold=5, n_iter=10):
     cv = model_selection.RandomizedSearchCV(estimator=clf, param_distributions=params, n_iter=n_iter
                                             , scoring={"r2": metrics.make_scorer(metrics.r2_score)
-            , "mse": "neg_mean_squared_error"}, cv=cv_fold, verbose=2
+            , "rmse": metrics.make_scorer(rmse, greater_is_better=False)}, cv=cv_fold, verbose=2
                                             , return_train_score=True, refit="r2")
     cv.fit(x, y)
     return cv
@@ -54,9 +59,6 @@ def benchmark(clf, X_train, y_train, X_test, y_test, params, feature_names=None,
         if feature_names is not None:
             importance = cv_res.best_estimator_.coef_
             x = np.argsort(importance)[-20:]
-            plt.bar(range(0, len(x)), importance[x])
-            plt.xticks(range(0, len(x)), tuple(feature_names[x]), rotation='vertical')
-            plt.show()
             print("top 10 keywords per class:")
             print(" ".join(feature_names[x]))
         print()
@@ -64,9 +66,6 @@ def benchmark(clf, X_train, y_train, X_test, y_test, params, feature_names=None,
         if feature_names is not None:
             importance = cv_res.best_estimator_.feature_importances_
             x = np.argsort(importance)[-20:]
-            plt.bar(range(0, len(x)), importance[x])
-            plt.xticks(range(0, len(x)), tuple(feature_names[x]), rotation='vertical')
-            plt.show()
             print("top 10 keywords per class:")
             print(" ".join(feature_names[x]))
         print()
