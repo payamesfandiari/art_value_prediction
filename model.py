@@ -7,7 +7,7 @@ from os import path
 from glob import iglob
 from sklearn.externals import joblib
 from sklearn import metrics
-
+from src.models import train_model
 
 def rmse(ground_truth, predictions):
     mse = metrics.mean_squared_error(ground_truth,predictions)
@@ -42,12 +42,24 @@ def predict(input_csv_file):
     y_test = X_t["hammer_price"]
     y_test = y_test.fillna(0)
     X_t = X_t.drop("hammer_price",axis=1)
-    model_name = "stacked_regressor.pkl"
-    for f in iglob("./models/*"):
-        if 'stacked_regressor' in f:
-            model_name = f
-            break
-    learned_model = joblib.load(model_name)
+    try:
+        model_name = "stacked_regressor.pkl"
+        for f in iglob("./models/*"):
+            if 'stacked_regressor' in f:
+                model_name = f
+                break
+
+        learned_model = joblib.load(model_name)
+    except Exception:
+        train_model.main()
+        model_name = "stacked_regressor.pkl"
+        for f in iglob("./models/*"):
+            if 'stacked_regressor' in f:
+                model_name = f
+                break
+
+        learned_model = joblib.load(model_name)
+
     rmse_score = rmse(y_test.values,learned_model.predict(X_t.values))
     print("The RMSE score is : ",rmse_score)
 
