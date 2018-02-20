@@ -27,6 +27,17 @@ AdaBoost Regression model performed well and the best model was Random Forest Re
 Instead of using One Hot Encoding techniques to transform the data, since we are dealing with Tree based model, I used factorizing transformation 
 where for every unique value in a column, I assigned an integer. This information is saved in the Feature Transformer to be used later.  
 
+## What if I had more time ?
+The first thing I do if I had more time is to gather more data specifically about the actual pieces (For example the picture of the painting)
+this will help to create a profile (using Convolutional Neural Net) for different art piece. I would also create a model for every artist separately. 
+The data did not have any information about the auction itself which could be very helpful. 
+Unfortunately, I did not had the time to investigate Neural nets specifically Autoencoders and RNNs. I have a feeling that by tracking each individual art piece as they get purchased 
+and later sold, we can create a fine grain profile for each individual piece which will be useful to look at. 
+
+Another important and interesting problem that I encounter was that none of the simpler linear models worked which is usually a bit odd. This means that 
+the predictive power of the features was not enough for the model to be able to extract any linear interaction. I think this 
+would be something to further investigate and understand.    
+
 ## Deliverables 
 * `Final Experiments` notebook, contains all the steps I ran to get the trained models. It also contains the answer to a subset of questions below. 
 
