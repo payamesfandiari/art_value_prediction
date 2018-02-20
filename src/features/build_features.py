@@ -149,6 +149,17 @@ class FeatureGenerator(BaseEstimator, TransformerMixin):
                         ]
         _X = _X.drop(dropped_attr,axis=1)
         _X = _X.drop_duplicates()
+        if self.return_categorical_features:
+            _X.loc[:, "materials"] = pd.Categorical(_X.materials.factorize()[0])
+            _X.loc[:, "location"] = pd.Categorical(_X.location.factorize()[0])
+            _X.loc[:, "category"] = pd.Categorical(_X.category.factorize()[0])
+            _X.loc[:, "artist_nationality"] = pd.Categorical(_X.artist_nationality.factorize()[0])
+            _X.loc[:, "artist_name"] = pd.Categorical(_X.artist_name.factorize()[0])
+            return _X
+        if self.return_one_hot_encode:
+            _X = pd.get_dummies(_X,columns=["materials","location","category","artist_nationality","artist_name"])
+            return _X
+
         return _X
 
     def _clean_materials(self, x,axis=1):
@@ -186,4 +197,4 @@ if __name__ == '__main__':
     # Saving the data
     XX.to_csv('../../data/processed/data.csv',encoding='latin-1')
     # Saving the model
-    joblib.dump(clf,'transformer.pkl')
+    joblib.dump(clf,'../models/transformer.pkl')

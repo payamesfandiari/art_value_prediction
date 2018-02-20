@@ -8,6 +8,7 @@ from glob import iglob
 from sklearn.externals import joblib
 
 
+
 def predict(input_csv_file):
     """
     The entry point of our experiments. We assume that the training is already done on the Train data.
@@ -32,7 +33,7 @@ def predict(input_csv_file):
         feature_transformer_file_name = "transformer.pkl"
     feature_transformer = joblib.load(feature_transformer_file_name)
     X_t = feature_transformer.transform(test)
-    
+
 
 
 
