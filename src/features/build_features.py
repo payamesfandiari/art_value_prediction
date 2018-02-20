@@ -103,8 +103,6 @@ class FeatureGenerator(BaseEstimator, TransformerMixin):
             _X.loc[_X.currency == 'EUR', 'hammer_price'] = _X.loc[_X.currency == 'EUR', 'hammer_price'].apply(
                 lambda x: x * self.EUR_USD)
 
-        # Make sure we have the same set of features
-        _X = _X.loc[:, self.valid_features_]
         # Making sure strings are all strings !
         _X.loc[:, 'category'] = _X.category.apply(lambda x: str(x).lower().replace('\r', '').replace('\n', ' '))
 
@@ -208,12 +206,16 @@ class FeatureGenerator(BaseEstimator, TransformerMixin):
         return 0
 
 
-if __name__ == '__main__':
-    data = pd.read_csv("../../data/raw/data.csv",encoding='latin-1')
+def main():
+    data = pd.read_csv("../../data/raw/data.csv", encoding='latin-1')
     clf = FeatureGenerator()
     clf.fit(data)
     XX = clf.transform(data)
     # Saving the data
-    XX.to_csv('../../data/processed/data.csv',encoding='latin-1')
+    XX.to_csv('../../data/processed/data.csv', encoding='latin-1')
     # Saving the model
-    joblib.dump(clf,'../../models/transformer.pkl')
+    joblib.dump(clf, '../../models/transformer.pkl')
+
+
+if __name__ == '__main__':
+    main()

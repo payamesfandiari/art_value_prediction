@@ -101,43 +101,43 @@ def main():
     data = data[pred]
     train, test, y_train, y_test = model_selection.train_test_split(data, lbl, train_size=0.7, test_size=0.3)
     # Finding the best set of Parameters for the level1 regressors.
-    # param_grid = {
-    #     'n_estimators': [100, 50, 500, 1000],
-    #     'learning_rate': [0.1, 0.2, 0.3, 0.5, 0.7],
-    #     'loss': ['linear', 'square', 'exponential'],
-    #     'base_estimator__splitter': ['best', 'random'],
-    #     'base_estimator__max_features': [3, 5, 'sqrt', 0.3],
-    # }
-    # clf = AdaBoostRegressor(base_estimator=tree.DecisionTreeRegressor(max_features=3))
-    # res = benchmark(clf, train.values, y_train.values, test.values, y_test.values, param_grid,
-    #                 np.array(train.columns), n_iter=10, cv_fold=3)
-    # print("Best parameters are : ",
-    #       res[1].sort_values('mean_test_rmse', ascending=False).iloc[[0, 1, 2, 3], "params"].values)
+    param_grid = {
+        'n_estimators': [100, 50, 500, 1000],
+        'learning_rate': [0.1, 0.2, 0.3, 0.5, 0.7],
+        'loss': ['linear', 'square', 'exponential'],
+        'base_estimator__splitter': ['best', 'random'],
+        'base_estimator__max_features': [3, 5, 'sqrt', 0.3],
+    }
+    clf = AdaBoostRegressor(base_estimator=tree.DecisionTreeRegressor(max_features=3))
+    res = benchmark(clf, train.values, y_train.values, test.values, y_test.values, param_grid,
+                    np.array(train.columns), n_iter=10, cv_fold=3)
+    print("Best parameters are : ",
+          res[1].sort_values('mean_test_rmse', ascending=False).iloc[[0, 1, 2, 3], "params"].values)
 
     # Identifying the best meta-regressors's params
-    # # rf = RandomForestRegressor(n_jobs=-1, verbose=1)
-    # # stack = StackingCVRegressor(
-    # #     regressors=(
-    # #         AdaBoostRegressor(n_estimators=50, loss='square', learning_rate=0.3,
-    # #                           base_estimator=tree.DecisionTreeRegressor(max_features=0.3, splitter='best')),
-    # #         AdaBoostRegressor(n_estimators=50, loss='square', learning_rate=0.3,
-    # #                           base_estimator=tree.DecisionTreeRegressor(max_features=0.5, splitter='best')),
-    # #         AdaBoostRegressor(n_estimators=50, loss='square', learning_rate=0.5,
-    # #                           base_estimator=tree.DecisionTreeRegressor(max_features=3)),
-    # #         AdaBoostRegressor(n_estimators=500, loss='exponential', learning_rate=0.1,
-    # #                           base_estimator=tree.DecisionTreeRegressor(max_features=3, splitter='random')),
-    # #     ), meta_regressor=rf, use_features_in_secondary=True)
-    # #
-    # # param_grid = {
-    # #     'meta-randomforestregressor__n_estimators': [10, 50, 100, 500],
-    # #     'meta-randomforestregressor__max_features': [3, 5, 0.3, 0.5, 0.7]
-    # # }
-    # #
-    # # res = benchmark(stack, train.values, y_train.values, test.values, y_test.values, param_grid,
-    # #                 np.array(train.columns), n_iter=10, cv_fold=3)
-    #
-    # print("Best parameter are : ",
-    #       res[1].sort_values('mean_test_rmse', ascending=False).iloc[[0], "params"].values)
+    rf = RandomForestRegressor(n_jobs=-1, verbose=1)
+    stack = StackingCVRegressor(
+        regressors=(
+            AdaBoostRegressor(n_estimators=50, loss='square', learning_rate=0.3,
+                              base_estimator=tree.DecisionTreeRegressor(max_features=0.3, splitter='best')),
+            AdaBoostRegressor(n_estimators=50, loss='square', learning_rate=0.3,
+                              base_estimator=tree.DecisionTreeRegressor(max_features=0.5, splitter='best')),
+            AdaBoostRegressor(n_estimators=50, loss='square', learning_rate=0.5,
+                              base_estimator=tree.DecisionTreeRegressor(max_features=3)),
+            AdaBoostRegressor(n_estimators=500, loss='exponential', learning_rate=0.1,
+                              base_estimator=tree.DecisionTreeRegressor(max_features=3, splitter='random')),
+        ), meta_regressor=rf, use_features_in_secondary=True)
+
+    param_grid = {
+        'meta-randomforestregressor__n_estimators': [10, 50, 100, 500],
+        'meta-randomforestregressor__max_features': [3, 5, 0.3, 0.5, 0.7]
+    }
+
+    res = benchmark(stack, train.values, y_train.values, test.values, y_test.values, param_grid,
+                    np.array(train.columns), n_iter=10, cv_fold=3)
+
+    print("Best parameter are : ",
+          res[1].sort_values('mean_test_rmse', ascending=False).iloc[[0], "params"].values)
 
     print("Training the final model to be used...")
     # Training the final model and saving it in ../../models for future use.
@@ -152,9 +152,9 @@ def main():
                               base_estimator=tree.DecisionTreeRegressor(max_features=3)),
             AdaBoostRegressor(n_estimators=500, loss='exponential', learning_rate=0.1,
                               base_estimator=tree.DecisionTreeRegressor(max_features=3, splitter='random')),
-        ), meta_regressor=rf_final, use_features_in_secondary=True, store_train_meta_features=True)
+        ), meta_regressor=rf_final, use_features_in_secondary=True, store_train_meta_features=False)
     stack_final.fit(data.values, lbl.values)
-    joblib.dump(stack_final, '../../models/stacked_regressor.pkl')
+    joblib.dump(stack_final, '../../models/stacked_regressor.pkl',compress=3)
 
 
 if __name__ == '__main__':

@@ -24,6 +24,7 @@ def predict(input_csv_file):
     RANDOM_SEED = 42
     np.random.seed(RANDOM_SEED)
     test = input_csv_file
+    print("Reading the input data...")
     if isinstance(input_csv_file,str):
         if not (path.exists(input_csv_file) and path.isfile(input_csv_file)):
             raise FileNotFoundError("The provided path is not valid.")
@@ -37,16 +38,17 @@ def predict(input_csv_file):
     else:
         feature_transformer_file_name = "transformer.pkl"
     feature_transformer = joblib.load(feature_transformer_file_name)
-    y_test = test["hammer_price"]
-    test = test.drop("hammer_price")
     X_t = feature_transformer.transform(test)
+    y_test = X_t["hammer_price"]
+    y_test = y_test.fillna(0)
+    X_t = X_t.drop("hammer_price",axis=1)
     model_name = "stacked_regressor.pkl"
     for f in iglob("./models/*"):
         if 'stacked_regressor' in f:
             model_name = f
             break
     learned_model = joblib.load(model_name)
-    rmse_score = rmse(y_test,learned_model.predict(X_t.values))
+    rmse_score = rmse(y_test.values,learned_model.predict(X_t.values))
     print("The RMSE score is : ",rmse_score)
 
 
