@@ -6,7 +6,12 @@ import numpy as np
 from os import path
 from glob import iglob
 from sklearn.externals import joblib
+from sklearn import metrics
 
+
+def rmse(ground_truth, predictions):
+    mse = metrics.mean_squared_error(ground_truth,predictions)
+    return np.sqrt(mse)
 
 
 def predict(input_csv_file):
@@ -32,7 +37,18 @@ def predict(input_csv_file):
     else:
         feature_transformer_file_name = "transformer.pkl"
     feature_transformer = joblib.load(feature_transformer_file_name)
+    y_test = test["hammer_price"]
+    test = test.drop("hammer_price")
     X_t = feature_transformer.transform(test)
+    model_name = "stacked_regressor.pkl"
+    for f in iglob("./models/*"):
+        if 'stacked_regressor' in f:
+            model_name = f
+            break
+    learned_model = joblib.load(model_name)
+    rmse_score = rmse(y_test,learned_model.predict(X_t.values))
+    print("The RMSE score is : ",rmse_score)
+
 
 
 

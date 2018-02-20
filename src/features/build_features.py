@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from  sklearn.externals import joblib
+from sklearn.externals import joblib
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted
 
@@ -28,31 +28,48 @@ class FeatureGenerator(BaseEstimator, TransformerMixin):
         self.transformed_features = None
 
     def fit(self, X, y=None):
-        X.loc[:, 'materials'] = X.materials.apply(lambda x: str(x).lower().replace('\r', '').replace('\n', ' '))
-        valid_materials = ['paper','sculpture','canvas','prints']
+        valid_materials = ['paper', 'sculpture', 'canvas', 'prints']
         valid_locs = []
-        if isinstance(self.top_valid_materials,int):
+
+        X.loc[:, 'materials'] = X.materials.apply(lambda x: str(x).lower().replace('\r', '').replace('\n', ' '))
+
+        X.loc[:, 'category'] = X.category.apply(lambda x: str(x).lower().replace('\r', '').replace('\n', ' '))
+
+        X.loc[:, 'location'] = X.location.apply(lambda x: str(x).lower().replace('\r', '').replace('\n', ' '))
+
+        X.loc[:, 'artist_nationality'] = X.artist_nationality.apply(
+            lambda x: str(x).lower().replace('\r', '').replace('\n', ' '))
+
+        if isinstance(self.top_valid_materials, int):
             if self.top_valid_materials < len(X.materials.unique()):
                 valid_materials = list(X.materials.value_counts()[:self.top_valid_materials].index)
             else:
                 valid_materials = list(X.materials.unique())
-        if isinstance(self.top_valid_materials,float):
+        if isinstance(self.top_valid_materials, float):
             last_ind = len(X.materials.unique()) * self.top_valid_materials
             valid_materials = list(X.materials.value_counts()[:last_ind].index)
 
-        if isinstance(self.top_valid_locs,int):
+        if isinstance(self.top_valid_locs, int):
             if self.top_valid_locs < len(X.location.unique()):
                 valid_locs = list(X.location.value_counts()[:self.top_valid_locs].index)
             else:
                 valid_locs = list(X.location.unique())
-        if isinstance(self.top_valid_locs,float):
+        if isinstance(self.top_valid_locs, float):
             last_ind = len(X.location.unique()) * self.top_valid_locs
             valid_locs = list(X.location.value_counts()[:last_ind].index)
-
 
         self.valid_features_ = list(X.columns)
         self.valid_materials_ = valid_materials
         self.valid_locs_ = valid_locs
+
+        X.loc[:, 'materials'] = X.materials.apply(self._clean_materials, axis=1)
+        X.loc[:, 'location'] = X.location.apply(self._clean_location)
+
+        self.materials_mapping_ = {v: u for u, v in enumerate(self.valid_materials_)}
+        self.locations_mapping_ = {v: u for u, v in enumerate(self.valid_locs_)}
+        self.category_mapping_ = {v: u for u, v in enumerate(X.category.unique())}
+        self.artist_name_mapping_ = {v: u for u, v in enumerate(X.artist_name.unique())}
+        self.artist_nationality_mapping_ = {v: u for u, v in enumerate(X.artist_nationality.unique())}
 
         return self
 
@@ -63,16 +80,31 @@ class FeatureGenerator(BaseEstimator, TransformerMixin):
         :return:
         """
         check_is_fitted(self, 'valid_features_')
-        if not isinstance(X,pd.DataFrame):
+        if not isinstance(X, pd.DataFrame):
             raise NotImplementedError("We do not support this type of data. We need Pandas Dataframe as an input.")
+
         _X = X.drop_duplicates()
+        # If it's the train data and we have 'hammer_price' then clean it up
+        if "hammer_price" in _X.columns:
+            # drop instances where hammer_price is NaN or smaller than zero and there is no estimte of high or low
+            _X = _X.loc[~np.logical_and(
+                np.logical_and(np.logical_or(_X.hammer_price.isnull(), _X.hammer_price < 0), _X.estimate_high.isnull()),
+                _X.estimate_low.isnull())]
+            # Replace the negative and NaN hammer_price with a mean of estimate_high and estimate_low
+            replacement_neg_hammer_price_ind = np.logical_and(
+                np.logical_or(_X.hammer_price < 0, _X.hammer_price.isnull()),
+                np.logical_not(_X.estimate_high.isnull()))
+            replacement_neg_hammer_price = _X.loc[
+                replacement_neg_hammer_price_ind, ['estimate_high', 'estimate_low']].mean(axis=1)
+            _X.loc[replacement_neg_hammer_price_ind, 'hammer_price'] = replacement_neg_hammer_price
+            # Change all the currencies to USD
+            _X.loc[_X.currency == 'GBP', 'hammer_price'] = _X.loc[_X.currency == 'GBP', 'hammer_price'].apply(
+                lambda x: x * self.GBP_USD)
+            _X.loc[_X.currency == 'EUR', 'hammer_price'] = _X.loc[_X.currency == 'EUR', 'hammer_price'].apply(
+                lambda x: x * self.EUR_USD)
+
         # Make sure we have the same set of features
         _X = _X.loc[:, self.valid_features_]
-        # drop instances where hammer_price is NaN or smaller than zero and there is no estimte of high or low
-        _X = _X.loc[~np.logical_and(
-            np.logical_and(np.logical_or(_X.hammer_price.isnull(), _X.hammer_price < 0), _X.estimate_high.isnull()),
-            _X.estimate_low.isnull())]
-
         # Making sure strings are all strings !
         _X.loc[:, 'category'] = _X.category.apply(lambda x: str(x).lower().replace('\r', '').replace('\n', ' '))
 
@@ -82,20 +114,6 @@ class FeatureGenerator(BaseEstimator, TransformerMixin):
 
         _X.loc[:, 'artist_nationality'] = _X.artist_nationality.apply(
             lambda x: str(x).lower().replace('\r', '').replace('\n', ' '))
-
-        # Replace the negative and NaN hammer_price with a mean of estimate_high and estimate_low
-        replacement_neg_hammer_price_ind = np.logical_and(
-            np.logical_or(_X.hammer_price < 0, _X.hammer_price.isnull()),
-            np.logical_not(_X.estimate_high.isnull()))
-        replacement_neg_hammer_price = _X.loc[
-            replacement_neg_hammer_price_ind, ['estimate_high', 'estimate_low']].mean(axis=1)
-        _X.loc[replacement_neg_hammer_price_ind, 'hammer_price'] = replacement_neg_hammer_price
-
-        # Change all the currencies to USD
-        _X.loc[_X.currency == 'GBP', 'hammer_price'] = _X.loc[_X.currency == 'GBP', 'hammer_price'].apply(
-            lambda x: x * self.GBP_USD)
-        _X.loc[_X.currency == 'EUR', 'hammer_price'] = _X.loc[_X.currency == 'EUR', 'hammer_price'].apply(
-            lambda x: x * self.EUR_USD)
 
         # Unifying the category feature.
         _X.loc[_X.category == "other works on paper", "category"] = "painting"
@@ -147,22 +165,23 @@ class FeatureGenerator(BaseEstimator, TransformerMixin):
                         'estimate_high',
                         'estimate_low'
                         ]
-        _X = _X.drop(dropped_attr,axis=1)
+        _X = _X.drop(dropped_attr, axis=1)
         _X = _X.drop_duplicates()
         if self.return_categorical_features:
-            _X.loc[:, "materials"] = pd.Categorical(_X.materials.factorize()[0])
-            _X.loc[:, "location"] = pd.Categorical(_X.location.factorize()[0])
-            _X.loc[:, "category"] = pd.Categorical(_X.category.factorize()[0])
-            _X.loc[:, "artist_nationality"] = pd.Categorical(_X.artist_nationality.factorize()[0])
-            _X.loc[:, "artist_name"] = pd.Categorical(_X.artist_name.factorize()[0])
+            _X.loc[:, "materials"] = _X.materials.apply(lambda x: self.materials_mapping_.get(x, -1))
+            _X.loc[:, "location"] = _X.location.apply(lambda x: self.locations_mapping_.get(x, -1))
+            _X.loc[:, "category"] = _X.category.apply(lambda x: self.category_mapping_.get(x, -1))
+            _X.loc[:, "artist_nationality"] = _X.artist_nationality.apply(
+                lambda x: self.artist_nationality_mapping_.get(x, -1))
+            _X.loc[:, "artist_name"] = _X.artist_name.apply(lambda x: self.artist_name_mapping_.get(x, -1))
             return _X
         if self.return_one_hot_encode:
-            _X = pd.get_dummies(_X,columns=["materials","location","category","artist_nationality","artist_name"])
+            _X = pd.get_dummies(_X, columns=["materials", "location", "category", "artist_nationality", "artist_name"])
             return _X
 
         return _X
 
-    def _clean_materials(self, x,axis=1):
+    def _clean_materials(self, x, axis=1):
         for m in self.valid_materials_:
             if m in x:
                 return m
@@ -190,11 +209,11 @@ class FeatureGenerator(BaseEstimator, TransformerMixin):
 
 
 if __name__ == '__main__':
-    data = pd.read_csv("../../data/raw/data.csv", encoding="latin-1")
+    data = pd.read_csv("../../data/raw/data.csv",encoding='latin-1')
     clf = FeatureGenerator()
     clf.fit(data)
     XX = clf.transform(data)
     # Saving the data
     XX.to_csv('../../data/processed/data.csv',encoding='latin-1')
     # Saving the model
-    joblib.dump(clf,'../models/transformer.pkl')
+    joblib.dump(clf,'../../models/transformer.pkl')
